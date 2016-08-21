@@ -10,93 +10,88 @@
 #include "IODsp.h"
 #include "IOFile.h"
 
-int descDSP ;
+int descDSP;
 
 void openDspWR()
 {
-	descDSP = openFileWR("/dev/dsp",0) ;
+	descDSP = openFileWR("/dev/dsp",0);
 }
 
 void openDspRO()
 {
-	descDSP = openFileRO("/dev/dsp") ;
+	descDSP = openFileRO("/dev/dsp");
 }
 
 void openDspROWR()
 {
-	descDSP = openFileROWR("/dev/dsp") ;
+	descDSP = openFileROWR("/dev/dsp");
 }
 
 void openDSP(int channels, int speed, int format, int wr, int fragments)
 {
-	if(wr == 2)openDspROWR() ;
-	else if(wr == 1)openDspWR() ;
-	else openDspRO() ;
+	if (wr == 2)
+		openDspROWR();
+	else if (wr == 1)
+		openDspWR();
+	else
+		openDspRO();
 
 	ioctl(descDSP, SNDCTL_DSP_RESET, 0);
-	if (ioctl(descDSP, SNDCTL_DSP_SETFMT, &format) == -1)
-	//if (ioctl(descDSP, SOUND_PCM_WRITE_BITS, &format) == -1)
-	{
+	if (ioctl(descDSP, SNDCTL_DSP_SETFMT, &format) == -1) {
 		/* fatal error */
 		perror("SNDCTL_DSP_SETFMT");
 		exit(1);
 	}
 
-	if (ioctl(descDSP, SNDCTL_DSP_CHANNELS, &channels) == -1)
-	//if (ioctl(descDSP, SOUND_PCM_WRITE_CHANNELS, &channels) == -1)
-	{
+	if (ioctl(descDSP, SNDCTL_DSP_CHANNELS, &channels) == -1) {
 		/* Fatal error */
 		perror("SNDCTL_DSP_CHANNELS");
 		exit(1);
 	}
 
-	if (ioctl(descDSP, SNDCTL_DSP_SPEED, &speed)==-1)
-	//if (ioctl(descDSP, SOUND_PCM_WRITE_RATE, &speed)==-1)
-	{
+	if (ioctl(descDSP, SNDCTL_DSP_SPEED, &speed) == -1) {
 		/* Fatal error */
 		perror("SNDCTL_DSP_SPEED");
 		exit(1);
 	}
 
-	if(fragments != 0)ioctl(descDSP, SNDCTL_DSP_SETFRAGMENT, &fragments);
+	if (fragments != 0)
+		ioctl(descDSP, SNDCTL_DSP_SETFRAGMENT, &fragments);
 	ioctl(descDSP, SNDCTL_DSP_SYNC, 0);
 }
 
 int readDSP(signed char *buffer, int sz)
 {
-	int ret ;
+	int ret;
 
-	if((ret = readFile(descDSP, buffer, sz)) == -1)
-	{
+	if ((ret = readFile(descDSP, buffer, sz)) == -1) {
 		perror("audio read");
 		exit(1);
 	}
 
-	return ret ;
+	return ret;
 }
 
 int writeDSP(signed char *buffer, int sz)
 {
-	int ret ;
-	int test ;
+	int ret;
+	int test;
 
-	if((ret = writeFile(descDSP, buffer, sz*sizeof(signed char)) == -1))
-	{
+	if ((ret = writeFile(descDSP, buffer, sz*sizeof(signed char)) == -1)) {
 		perror("audio write");
 		exit(1);
 	}
 
-	if((test = ioctl(descDSP, SOUND_PCM_SYNC, 0)) == -1)
-	{
+	if ((test = ioctl(descDSP, SOUND_PCM_SYNC, 0)) == -1) {
 		perror("audio sync");
 		exit(1);
 	}
 
-	return ret ;
+	return ret;
 }
 
 void closeDSP()
 {
-	closeFile(descDSP) ;
-	descDSP = -1 ;
+	closeFile(descDSP);
+	descDSP = -1;
 }
