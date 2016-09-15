@@ -2,6 +2,10 @@
 bin/*
 !bin/.gitkeep
 
+# Sample files
+assets/sampleout
+assets/samplein
+
 # Object files
 *.o
 *.ko
