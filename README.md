@@ -1,7 +1,7 @@
-# soundfreq 
+# txt2sine 
 
 Transmit a text file between 2 computers by sound signal.
-The sender side encode binary data into signal chunks and writes them into oss sound device.
+The sender side encode binary data into sine chunks and writes them into oss sound device.
 The receiver listen the sound device (mic recording), get the signal and decode it onto binary data.
 
 ## Compile
@@ -64,5 +64,5 @@ padsp bin/./encode
 ## Todo
 
 - Add file path parameter to encode binary for choose any file to transmit
-- Increase throughtput (currently, no realistic 1o/s)
+- Increase throughtput (currently, no realistic with some o/s)
 - Use alsa library instead of deprecated oss

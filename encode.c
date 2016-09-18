@@ -15,10 +15,9 @@
 #include "iomixer.h"
 
 /* Defines global variables */
-const int speed = 22050;
-const double frequency = 1;
-const int format = AFMT_U8;
-const int stereo=1;
+const int speed = 44100;
+const int format = AFMT_S16_LE;
+const int stereo = 1;
 
 /*
 *	write_char - Encode an inputed character to a signal
@@ -29,35 +28,35 @@ const int stereo=1;
 */
 static void write_char(unsigned char c)
 {
-	int freq = 40 + c*40;
-	int desc, sz;
-	double cycles = (double)freq/speed;
+	int freq = 400 + c * 60;
 	unsigned int i;
-	signed char buffer[NSAMPLES];
-	signed char buffer2[512];
-	char *filename;
-
-	sz = 2;
-	if (freq > 99)
-		sz = 3;
-	if (freq > 999)
-		sz = 4;
-	if (freq > 9999)
-		sz = 5;
-	sz += 5;
-	filename = (char*) malloc((sz+1) * sizeof(char));
-	sprintf(filename, "assets/freq/%d", freq);
-	filename[sz] = '\0';
+	float value;
+	short buffer[NSAMPLES];
 
 	printf("Char:%c, frequence:%d\n", c, freq);
 
-	desc = open_file_ro(filename);
-	read_file(desc, buffer2, 512);
-	close_file(desc);
-        free(filename);
+	/* Compute sinusoidal signal for encode char */
+    	i = 0;
+	while (i < NSAMPLES) {
+      		/* i is the sample index
+      		 Multiply by 2*pi -> one cycle per sample:
+      		 Multiply by freq samples per second
+      		 Divide by 2050 samples per second
+		*/
+      		value = 32768 * sin(freq * (2 * M_PI) * i / speed);
 
-	for(i = 0; i < NSAMPLES; i++)
-		buffer[i] = buffer2[i%512];
+		if (value > 32767.0f)
+			value = 32767.0f;
+		if (value < -32768.0f)
+			value = -32768.0f;
+		//buffer[i++] = (signed char)value;
+
+		/* first send the low byte then the high byte */
+		//buffer[i++] = (unsigned char)((int)value & 0xff);
+		//buffer[i++] = (unsigned char)(((int)value >> 8) & 0xff);
+		buffer[i++] = (short)value;
+    	}
+
 
 	write_dsp(buffer, NSAMPLES);
 }
@@ -67,7 +66,12 @@ static void write_char(unsigned char c)
 */
 void init_encode()
 {
-	open_dsp(stereo, speed, format, 1, 0);
+	int max_fragments = 2;
+	int frag_shift = ffs(NSAMPLES) - 1;
+	int fragments = (max_fragments << 16) | frag_shift;
+
+	fragments = 0x0004000a;
+	open_dsp(stereo, speed, format, 1, fragments);
 }
 
 /*
@@ -78,9 +82,12 @@ void init_encode()
 */
 void write_datas(unsigned char *buffer)
 {
+	unsigned char between = '/';
 	unsigned int i;
-	for (i = 0; i < strlen(buffer); i++)
+	for (i = 0; i < strlen(buffer); i++) {
 		write_char(buffer[i]);
+		write_char(between);
+	}
 }
 
 /*

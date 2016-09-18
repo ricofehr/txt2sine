@@ -11,23 +11,22 @@
 */
 int main(int argc, char *argv[])
 {
-	unsigned char buff[4096];
+	short buff[4096];
 
 	int sz = 4096;
 	int desc = open_file_ro("assets/sampleout");
 
+	sleep(5);
 	init_encode();
 	/* Trigger decode to start record */
-	write_char('h');
-	write_char('h');
+	write_datas("bhkh");
 	do {
 		sz = read_file(desc, buff, sz*sizeof(unsigned char));
-		write_datas(buff);
+		write_datas((unsigned char *)buff);
 	}
 	while (sz >= 4096);
 	/* Trigger decode to finish record */
-	write_char('h');
-	write_char('h');
+	write_datas("hkh");
 
 	close_encode();
 	close_file(desc);

@@ -18,11 +18,10 @@
 #include "iomixer.h"
 
 /* Define program global variables */
-const char *names[SOUND_MIXER_NRDEVICES] = SOUND_DEVICE_NAMES;
-int speed = 22050;
-double frequency = 1;
-int format = AFMT_U8;
+int speed = 44100;
+int format = AFMT_S16_LE;
 int stereo = 1;
+int debug = 0;
 
 /* Global variables only for decode.c */
 static double *in, *in_windowed;
@@ -30,8 +29,6 @@ static fftw_complex *out;
 static double *bins;
 static fftw_plan p;
 static struct pair peak;
-static signed char *bigbuf;
-static int freq;
 
 
 /*
@@ -41,31 +38,23 @@ static int freq;
 */
 static void read_chunk()
 {
-	int ret, descin;
-	unsigned to_read = FFT_LENGTH / PAD_FACTOR / OVERLAP, i;
-	signed char buf[to_read];
+	int ret;
+	int i;
+	short buf[FFT_LENGTH];
 
-	/** move sound segment **/
-	memmove(in, in + to_read, (FFT_LENGTH / PAD_FACTOR - to_read) * sizeof(double));
-	memmove(bigbuf, bigbuf + to_read, (FFT_LENGTH / PAD_FACTOR - to_read) * sizeof(signed char));
-
-	ret = read_dsp(buf, to_read * sizeof(signed char));
+	ret = read_dsp(buf, FFT_LENGTH);
 	if (ret == 0) {
 		printf("EOF\n");
 		exit(0);
 	}
 
-	to_read = ret;
-	//printf("to_read:%d\n", to_read);
-	if (ret != (int) to_read * sizeof(signed char)) {
-		printf("ret:%d, to_read:%d, %d\n\n", ret, to_read*sizeof(signed char), to_read);
+	if (ret != FFT_LENGTH * sizeof(short)) {
 		perror("read");
 		exit(1);
 	}
 
-	for (i = 0; i < to_read; i++) {
-		in[i + (FFT_LENGTH / PAD_FACTOR - to_read)] = (double) buf[i];
-		bigbuf[i + (FFT_LENGTH / PAD_FACTOR - to_read)] = buf[i];
+	for (i = 0; i < FFT_LENGTH; i++) {
+		in[i] = (double)buf[i];
 	}
 }
 
@@ -82,8 +71,10 @@ static void apply_window()
 	unsigned i;
 
 	/* Initialize the window for the first time */
-	if (!win_inited) {
-		win_len = FFT_LENGTH / PAD_FACTOR;
+	if (win_inited == 0 || win_len != FFT_LENGTH) {
+		if (win_inited)
+			free(win_data);
+		win_len = FFT_LENGTH;
 		win_data = (double *) malloc(win_len * sizeof(double));
 
 		for (i = 0; i < win_len; i++) {
@@ -94,13 +85,10 @@ static void apply_window()
 		win_inited = 1;
 	}
 
-	assert(win_len == FFT_LENGTH / PAD_FACTOR);
+	assert(win_len == FFT_LENGTH);
 
 	for (i = 0; i < win_len; i++) {
 		in_windowed[i] = in[i] * win_data[i];
-	}
-	for (i = win_len; i < FFT_LENGTH; i++) {
-		in_windowed[i] = 0.0;
 	}
 }
 
@@ -112,7 +100,7 @@ static void apply_window()
 static void find_peak_magnitudes()
 {
 	unsigned i;
-	for (i = 0; i < FFT_LENGTH / 2+1; i++) {
+	for (i = 0; i < FFT_LENGTH + 1; i++) {
 		bins[i] = sqrt(out[i][0] * out[i][0] + out[i][1] * out[i][1]);
 	}
 }
@@ -170,14 +158,12 @@ static double freq_to_bin(double freq)
  */
 static void init_fftw()
 {
-	in = (double *) (fftw_malloc(sizeof(double) * FFT_LENGTH / PAD_FACTOR));
+	in = (double *) (fftw_malloc(sizeof(double) * FFT_LENGTH));
 	in_windowed = (double *) (fftw_malloc(sizeof(double) * FFT_LENGTH));
-	out = (fftw_complex *) (fftw_malloc(sizeof(fftw_complex) * (FFT_LENGTH / 2 + 1)));
-	bins = (double *) (fftw_malloc(sizeof(double) * (FFT_LENGTH / 2 + 1)));
-	bigbuf = (signed char*) malloc(sizeof(signed char) * FFT_LENGTH / PAD_FACTOR);
+	out = (fftw_complex *) (fftw_malloc(sizeof(fftw_complex) * (FFT_LENGTH  + 1)));
+	bins = (double *) (fftw_malloc(sizeof(double) * (FFT_LENGTH + 1)));
 
-	memset(in, 0, sizeof(double) * FFT_LENGTH / PAD_FACTOR);
-	memset(bigbuf, '0', sizeof(signed char) * FFT_LENGTH / PAD_FACTOR);
+	memset(in, 0, sizeof(double) * FFT_LENGTH);
 
 	p = fftw_plan_dft_r2c_1d(FFT_LENGTH, in_windowed, out, FFTW_ESTIMATE);
 }
@@ -191,39 +177,14 @@ static struct pair find_peak()
 	unsigned best_bin = 5, i;
 	struct pair peakret;
 
-	for (i = 2; i < FFT_LENGTH/2+1; i++) {
+	for (i = 2; i < FFT_LENGTH + 1; i++) {
 		if (bins[i] > best_peak) {
 			best_peak = bins[i];
 			best_bin = i;
 		}
 	}
 
-	if (best_bin == 0 || best_bin == FFT_LENGTH/2) {
-		peakret.first = -1.0;
-		peakret.second = 0.0;
-		return peakret;
-	}
-
-	// see if we might have hit an overtone (set a limit of 5dB)
-	/*
-	for (unsigned i = 4; i >= 1; --i) {
-		if (best_bin != best_bin / i &&
-		    20.0 * log10(bins[best_bin] / bins[best_bin / i]) < 5.0f) {
-			best_bin /= i;
-
-			// consider sliding one bin up or down
-			if (best_bin > 1 && bins[best_bin - 1] > bins[best_bin] && bins[best_bin - 1] > bins[best_bin - 2]) {
-				--best_bin;
-			} else if (best_bin < num_samples / 2 - 1 && bins[best_bin + 1] > bins[best_bin] && bins[best_bin + 1] > bins[best_bin + 2]) {
-				++best_bin;
-			}
-
-			break;
-		}
-	}
-*/
-	if (best_bin == 0 || best_bin == FFT_LENGTH / 2)
-	{
+	if (best_bin == 0 || best_bin == FFT_LENGTH) {
 		peakret.first = -1.0;
 		peakret.second = 0.0;
 		return peakret;
@@ -233,9 +194,29 @@ static struct pair find_peak()
 				 bins[best_bin],
 				 bins[best_bin + 1]);
 	peakret.first = bin_to_freq((double)best_bin + peakret.first);
-	// fprintf(stderr, "Freq: %d, ym1:%d, y0:%d, y1:%d\n",(int)peakret.first, bins[best_bin - 1], bins[best_bin], bins[best_bin + 1]);
 
 	return peakret;
+}
+
+/*
+*	get_data_from_device - Read a chunk and decode it
+*/
+static double get_data_from_device()
+{
+	double freq;
+
+	read_chunk();
+	apply_window();
+	fftw_execute(p);
+	find_peak_magnitudes();
+	peak = find_peak();
+
+	if (peak.first < 400.0 || peak.second - log10(FFT_LENGTH) < 0.0)
+		freq = 0;
+	else
+	    freq = (int)peak.first;
+
+	return freq;
 }
 
 /*
@@ -244,29 +225,18 @@ static struct pair find_peak()
 unsigned char tuner_get_char() {
 	int descin, filefreq, sz;
 	char command[128];
-	double delta = 0;
-	unsigned int i, j=0;
+	double freq = 0;
+	unsigned int i;
 
-	get_data_from_device();
+	freq = get_data_from_device();
 
-	if(freq < 40)
+	if(freq < 400)
 		return 255;
-	fprintf(stderr, "Freq: %d, Db:%d\n", (int)peak.first, (int)peak.second);
 
 	for(i=0; i<256; i++) {
-		if(freq >= (40 + i*40 - 20) && freq < (40 + i*40 + 20)) {
-			fprintf(stderr, "Freq: %u ", (int)freq);
-			fprintf(stderr, "NSAMPLES:%d:%d:%c\n", speed, i, i);
-			descin = open("assets/freq/current", O_CREAT | O_WRONLY | O_TRUNC, 0777);
-			while(j++ < (speed / FFT_LENGTH / PAD_FACTOR) + 1)
-				write(descin, bigbuf, FFT_LENGTH / PAD_FACTOR * sizeof(signed char));
-			close(descin);
-
-			filefreq = 40 + i*40;
-
-			sprintf(command, "if [ ! -f assets/freq/%d ]; then mv assets/freq/current assets/freq/%d; fi", filefreq, filefreq);
-			printf("%s\n", command);
-			system(command);
+		if(freq >= (400 + i * 60 - 20) && freq < (400 + i * 60 + 20)) {
+			if (debug)
+				fprintf(stderr, "Fftl: %d, Freq: %d, Db:%d, Char: %c\n", FFT_LENGTH, (int)peak.first, (int)peak.second, (char)i);
 			return i;
 		}
 	}
@@ -275,33 +245,15 @@ unsigned char tuner_get_char() {
 }
 
 /*
-*	get_data_from_device - Read a chunk and decode it
-*/
-void get_data_from_device()
-{
-	read_chunk();
-	apply_window();
-	fftw_execute(p);
-	find_peak_magnitudes();
-	peak = find_peak();
-	//if (peak.first > 1000 && peak.second > 0.0)
-	//	printf("first: %f, second: %f\n", peak.first, peak.second);
-	if (peak.first < 40.0 || peak.second - log10(FFT_LENGTH) < 0.0)
-		freq = 0;
-	else
-	    freq = (int) peak.first;
-}
-
-/*
 *	init_decode - Open and init sound device
 */
 void init_decode() {
 	unsigned int i;
 	int max_fragments = 2;
-	int frag_shift = ffs(FFT_LENGTH / OVERLAP) - 1;
+	int frag_shift = ffs(FFT_LENGTH) - 1;
 	int fragments = (max_fragments << 16) | frag_shift;
+	//fragments = 0x0004000a;
 
-	//init_vol();
 	init_micro();
 	init_fftw();
 	open_dsp(stereo, speed, format, 0, fragments);
