@@ -18,6 +18,9 @@
 const int speed = 44100;
 const int format = AFMT_S16_LE;
 const int stereo = 1;
+const int debug = 0;
+
+static unsigned char separator = ';';
 
 /*
 *	write_char - Encode an inputed character to a signal
@@ -33,7 +36,8 @@ static void write_char(unsigned char c)
 	float value;
 	short buffer[NSAMPLES];
 
-	printf("Char:%c, frequence:%d\n", c, freq);
+	if (debug)
+		printf("Char:%c, frequence:%d\n", c, freq);
 
 	/* Compute sinusoidal signal for encode char */
     	i = 0;
@@ -41,7 +45,7 @@ static void write_char(unsigned char c)
       		/* i is the sample index
       		 Multiply by 2*pi -> one cycle per sample:
       		 Multiply by freq samples per second
-      		 Divide by 2050 samples per second
+      		 Divide by sample rate
 		*/
       		value = 32768 * sin(freq * (2 * M_PI) * i / speed);
 
@@ -49,11 +53,7 @@ static void write_char(unsigned char c)
 			value = 32767.0f;
 		if (value < -32768.0f)
 			value = -32768.0f;
-		//buffer[i++] = (signed char)value;
 
-		/* first send the low byte then the high byte */
-		//buffer[i++] = (unsigned char)((int)value & 0xff);
-		//buffer[i++] = (unsigned char)(((int)value >> 8) & 0xff);
 		buffer[i++] = (short)value;
     	}
 
@@ -70,7 +70,6 @@ void init_encode()
 	int frag_shift = ffs(NSAMPLES) - 1;
 	int fragments = (max_fragments << 16) | frag_shift;
 
-	fragments = 0x0004000a;
 	open_dsp(stereo, speed, format, 1, fragments);
 }
 
@@ -82,11 +81,10 @@ void init_encode()
 */
 void write_datas(unsigned char *buffer)
 {
-	unsigned char between = '/';
 	unsigned int i;
 	for (i = 0; i < strlen(buffer); i++) {
 		write_char(buffer[i]);
-		write_char(between);
+		write_char(separator);
 	}
 }
 

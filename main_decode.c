@@ -107,7 +107,6 @@ int main(int argc, char *argv[])
 
 		/* Record character */
 		buff[cp++] = current;
-		printf("%s\n", buff);
 		if(cp >= 4091) {
 			buff[cp++] = '\0';
 			write(desc, buff, cp * sizeof(unsigned char));

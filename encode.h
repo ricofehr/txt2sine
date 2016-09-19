@@ -8,6 +8,7 @@ extern const int speed;
 extern const double frequency;
 extern const int format;
 extern const int stereo;
+extern const int debug;
 
 void init_encode();
 void write_datas(unsigned char *buffer);

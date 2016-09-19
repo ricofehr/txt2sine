@@ -4,10 +4,10 @@
 #define FFT_LENGTH      256     /* in samples */
 
 /* Declares global variables */
-extern int speed;
-extern int debug;
-extern int format;
-extern int stereo;
+extern const int speed;
+extern const int debug;
+extern const int format;
+extern const int stereo;
 
 struct pair
 {

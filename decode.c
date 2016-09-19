@@ -18,10 +18,10 @@
 #include "iomixer.h"
 
 /* Define program global variables */
-int speed = 44100;
-int format = AFMT_S16_LE;
-int stereo = 1;
-int debug = 0;
+const int speed = 44100;
+const int format = AFMT_S16_LE;
+const int stereo = 1;
+const int debug = 0;
 
 /* Global variables only for decode.c */
 static double *in, *in_windowed;
@@ -235,7 +235,7 @@ unsigned char tuner_get_char() {
 
 	for(i=0; i<256; i++) {
 		if(freq >= (400 + i * 60 - 20) && freq < (400 + i * 60 + 20)) {
-			if (debug)
+			if (debug == 2)
 				fprintf(stderr, "Fftl: %d, Freq: %d, Db:%d, Char: %c\n", FFT_LENGTH, (int)peak.first, (int)peak.second, (char)i);
 			return i;
 		}
@@ -252,7 +252,6 @@ void init_decode() {
 	int max_fragments = 2;
 	int frag_shift = ffs(FFT_LENGTH) - 1;
 	int fragments = (max_fragments << 16) | frag_shift;
-	//fragments = 0x0004000a;
 
 	init_micro();
 	init_fftw();
