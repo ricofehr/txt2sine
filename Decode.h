@@ -1,9 +1,6 @@
 #ifndef DECODE_H_
 #define DECODE_H_
 
-//#include <complex>
-
-
 #define NSAMPLES (22050)
 #define FFT_LENGTH      4096     /* in samples */
 #define PAD_FACTOR      2        /* 1/pf of the FFT samples are real samples, the rest are padding */
@@ -19,18 +16,18 @@ typedef struct paireDouble
 }pair;
 
 
-extern void initDecode() ;
-void getDataFromDevice() ;
-unsigned char tunerGetChar() ;
-void readChunk() ;
-void applyWindow() ;
-void findPeakMagnitudes() ;
-pair findPeak() ;
-pair interpolatePeak(double ym1, double y0, double y1) ;
-//std::pair<double, double> adjustForOvertones(std::pair<double, double> base, unsigned num_samples) ;
-double binToFreq(double bin) ;
-double freqToBin(double freq) ;
-void initFFTW() ;
-extern void closeDecode() ;
+extern void initDecode();
+void getDataFromDevice();
+unsigned char tunerGetChar();
+void readChunk();
+void applyWindow();
+void findPeakMagnitudes();
+pair findPeak();
+pair interpolatePeak(double ym1, double y0, double y1);
+//std::pair<double, double> adjustForOvertones(std::pair<double, double> base, unsigned num_samples);
+double binToFreq(double bin);
+double freqToBin(double freq);
+void initFFTW();
+extern void closeDecode();
 
 #endif /*DECODE_H_*/

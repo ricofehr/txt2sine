@@ -1,7 +1,6 @@
 # Project files to ignore
-bin/
-!bin/.keep
-Makefile
+bin/*
+!bin/.gitkeep
 
 # Object files
 *.o

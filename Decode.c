@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <assert.h>
-//#include <algorithm>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
@@ -17,42 +16,38 @@
 #include "IODsp.h"
 #include "IOMixer.h"
 
-extern int speed ;
-extern double frequency ;
-extern int format ;
-extern int stereo ;
+extern int speed;
+extern double frequency;
+extern int format;
+extern int stereo;
 
+/** Global variables **/
 double *in, *in_windowed;
-fftw_complex *out ;
+fftw_complex *out;
 double *bins;
 fftw_plan p;
-pair peak ;
-signed char *bigbuf ;
+pair peak;
+signed char *bigbuf;
 
-int freq ;
+int freq;
 
 /** Main function **/
 void getDataFromDevice()
 {
-		readChunk();
-		applyWindow();
-		//fprintf(stderr, "fftw_execute0\n") ;
-		fftw_execute(p);
-		//fprintf(stderr, "fftw_execute\n") ;
-		findPeakMagnitudes();
-
-		peak = findPeak();
-		//fprintf(stderr, "Freq: %d, Db:%d, log10:%d\n",(int)peak.first, (int)peak.second, (int)log10(FFT_LENGTH)) ;
-		//if (peak.first > 0.0)peak = adjustForOvertones(peak, FFT_LENGTH);
-		if (peak.first < 40.0 || peak.second - log10(FFT_LENGTH) < 0.0) {
-			freq = 0 ;
-		}
-		else {
-			freq = (int)peak.first ;
-		}
-
+    readChunk();
+    applyWindow();
+    fftw_execute(p);
+    findPeakMagnitudes();
+	peak = findPeak();
+	if (peak.first < 40.0 || peak.second - log10(FFT_LENGTH) < 0.0) {
+		freq = 0;
+	}
+	else {
+	    freq = (int)peak.first;
+	}
 }
 
+/** Read sound interval **/
 void readChunk()
 {
 	int ret,descin;
@@ -70,7 +65,7 @@ void readChunk()
 	}
 
 	if (ret != (int) to_read * sizeof(signed char)) {
-		printf("ret:%d, to_read:%d, %d\n\n", ret, to_read*sizeof(signed char), to_read) ;
+		printf("ret:%d, to_read:%d, %d\n\n", ret, to_read*sizeof(signed char), to_read);
 		// blah
 		perror("read");
 		exit(1);
@@ -84,7 +79,7 @@ void readChunk()
 }
 
 /*
- * Applique la fenêtre de Hamming sur les échantillons.
+ * Apply hamming window
  *
  */
 void applyWindow()
@@ -92,7 +87,7 @@ void applyWindow()
 	static double *win_data;
 	static unsigned win_len;
 	static unsigned win_inited = 0;
-	unsigned i ;
+	unsigned i;
 
 	// Initialize the window for the first time
 	if (!win_inited) {
@@ -125,10 +120,9 @@ void applyWindow()
  */
 void findPeakMagnitudes()
 {
-	unsigned i ;
-	for (i = 0; i < FFT_LENGTH / 2+1 ; i++)
+	unsigned i;
+	for (i = 0; i < FFT_LENGTH / 2+1; i++)
 	{
-		//fprintf(stderr, "findPeakMagnitudes:%d:%d\n", FFT_LENGTH, i) ;
 		//calcul module du ieme complexe du tableau out
 		bins[i] = sqrt(out[i][0]*out[i][0]+out[i][1]*out[i][1]);
 	}
@@ -141,11 +135,11 @@ void findPeakMagnitudes()
  */
 pair findPeak()
 {
-	double best_peak = bins[5] ;
-	unsigned best_bin = 5, i ;
-	pair peakret ;
+	double best_peak = bins[5];
+	unsigned best_bin = 5, i;
+	pair peakret;
 
-	for (i = 2; i < FFT_LENGTH/2+1 ; i++) {
+	for (i = 2; i < FFT_LENGTH/2+1; i++) {
 		if (bins[i] > best_peak) {
 			best_peak = bins[i];
 			best_bin = i;
@@ -153,8 +147,8 @@ pair findPeak()
 	}
 
 	if (best_bin == 0 || best_bin == FFT_LENGTH/2) {
-		peakret.first = -1.0 ;
-		peakret.second = 0.0 ;
+		peakret.first = -1.0;
+		peakret.second = 0.0;
 		return peakret;
 	}
 
@@ -178,18 +172,18 @@ pair findPeak()
 */
 	if (best_bin == 0 || best_bin == FFT_LENGTH / 2)
 	{
-		peakret.first = -1.0 ;
-		peakret.second = 0.0 ;
+		peakret.first = -1.0;
+		peakret.second = 0.0;
 		return peakret;
 	}
 
 	peakret = interpolatePeak(bins[best_bin - 1],
 				 bins[best_bin],
 				 bins[best_bin + 1]);
-	peakret.first = binToFreq((double)best_bin + peakret.first) ;
-	//fprintf(stderr, "Freq: %d, ym1:%d, y0:%d, y1:%d\n",(int)peakret.first, bins[best_bin - 1], bins[best_bin], bins[best_bin + 1]) ;
+	peakret.first = binToFreq((double)best_bin + peakret.first);
+	//fprintf(stderr, "Freq: %d, ym1:%d, y0:%d, y1:%d\n",(int)peakret.first, bins[best_bin - 1], bins[best_bin], bins[best_bin + 1]);
 
-	return peakret ;
+	return peakret;
 }
 
 /*
@@ -205,7 +199,7 @@ pair findPeak()
  */
 pair interpolatePeak(double ym1, double y0, double y1)
 {
-	pair ret ;
+	pair ret;
 
 	ym1 = log10(ym1);
 	y0 = log10(y0);
@@ -223,10 +217,10 @@ pair interpolatePeak(double ym1, double y0, double y1)
 	double xmax = (ym1 - y1) / (2.0 * (y1 + ym1 - 2.0 * y0));
 	double ymax = 20.0 * (a * xmax * xmax + b * xmax + c) - 90.0;
 
-	ret.first = xmax ;
-	ret.second = ymax ;
+	ret.first = xmax;
+	ret.second = ymax;
 
-	return ret ;
+	return ret;
 }
 
 /*
@@ -254,14 +248,14 @@ void initDecode() {
 	int frag_shift = ffs(FFT_LENGTH / OVERLAP) - 1;
 	int fragments = (max_fragments << 16) | frag_shift;
 
-	//initVol() ;
-	initMicro() ;
-	initFFTW() ;
-	openDSP(stereo, speed, format, 0, fragments) ;
+	//initVol();
+	initMicro();
+	initFFTW();
+	openDSP(stereo, speed, format, 0, fragments);
 }
 
 /*
- * initialise la transformé de Fourier
+ * Init Fourier transform
  */
 void initFFTW()
 {
@@ -269,7 +263,7 @@ void initFFTW()
 	in_windowed = (double *) (fftw_malloc(sizeof(double) * FFT_LENGTH));
 	out = (fftw_complex *) (fftw_malloc(sizeof(fftw_complex) * (FFT_LENGTH / 2 + 1)));
 	bins = (double *) (fftw_malloc(sizeof(double) * (FFT_LENGTH / 2 + 1)));
-	bigbuf = (signed char*) malloc(sizeof(signed char) * FFT_LENGTH / PAD_FACTOR) ;
+	bigbuf = (signed char*) malloc(sizeof(signed char) * FFT_LENGTH / PAD_FACTOR);
 
 	memset(in, 0, sizeof(double) * FFT_LENGTH / PAD_FACTOR);
 	memset(bigbuf, '0', sizeof(signed char) * FFT_LENGTH / PAD_FACTOR);
@@ -278,53 +272,54 @@ void initFFTW()
 }
 
 /*
- * Obtient un caractère à partir d une fréquence
+ * Freq to character function
  */
 unsigned char tunerGetChar() {
-	int descin, filefreq, sz ;
-	char *command ;
+	int descin, filefreq, sz;
+	char *command;
 	double delta = 0;
 	unsigned int i, j=0;
 
 	getDataFromDevice();
 
-	if(freq < 40)return 255 ;
-	fprintf(stderr, "Freq: %d, Db:%d\n",(int)peak.first, (int)peak.second) ;
+	if(freq < 40)return 255;
+	fprintf(stderr, "Freq: %d, Db:%d\n",(int)peak.first, (int)peak.second);
 
 	for(i=0; i<256; i++)
 	{
 		if(freq >= (40+i*40-20) && freq < (40+(i)*40+20))
 		{
-			fprintf(stderr, "Freq: %u ",(int)freq) ;
-			fprintf(stderr, "NSAMPLES:%d:%d:%c\n", speed,i,i) ;
+			fprintf(stderr, "Freq: %u ",(int)freq);
+			fprintf(stderr, "NSAMPLES:%d:%d:%c\n", speed,i,i);
 
-			descin = open("freq/current", O_CREAT | O_WRONLY | O_TRUNC, 0777) ;
-			while(j++<(speed/FFT_LENGTH/PAD_FACTOR)+1)write(descin, bigbuf, FFT_LENGTH / PAD_FACTOR*sizeof(signed char)) ;
-			close(descin) ;
+			descin = open("freq/current", O_CREAT | O_WRONLY | O_TRUNC, 0777);
+			while(j++<(speed/FFT_LENGTH/PAD_FACTOR)+1)write(descin, bigbuf, FFT_LENGTH / PAD_FACTOR*sizeof(signed char));
+			close(descin);
 
-			filefreq = 40+i*40 ;
+			filefreq = 40+i*40;
 
-			sz = 2*2 ;
-			if(filefreq > 99)sz = 3*2 ;
-			if(filefreq > 999)sz = 4*2 ;
-			if(filefreq > 9999)sz = 5*2 ;
-			sz += 49 ;
-			command = (char*)malloc((sz+1)*sizeof(char)) ;
-			sprintf(command, "if [ ! -f freq/%d ]; then mv freq/current freq/%d; fi", filefreq, filefreq) ;
-			command[sz] = '\0' ;
+			sz = 2*2;
+			if(filefreq > 99)sz = 3*2;
+			if(filefreq > 999)sz = 4*2;
+			if(filefreq > 9999)sz = 5*2;
+			sz += 49;
+			command = (char*)malloc((sz+1)*sizeof(char));
+			sprintf(command, "if [ ! -f freq/%d ]; then mv freq/current freq/%d; fi", filefreq, filefreq);
+			command[sz] = '\0';
 
-			printf("%s\n", command) ;
-			system(command) ;
-			free(command) ;
+			printf("%s\n", command);
+			system(command);
+			free(command);
 
-			return i ;
+			return i;
 		}
 	}
 
-	return 255 ;
+	return 255;
 }
 
+/** Close sound device **/
 void closeDecode()
 {
-	closeDSP() ;
+	closeDSP();
 }

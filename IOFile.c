@@ -7,8 +7,7 @@
 int openFileRO(char *path)
 {
 	int ret ;
-	if((ret = open(path, O_RDONLY)) == -1) 
-	{
+	if ((ret = open(path, O_RDONLY)) == -1) {
 		perror("openFileRO failed");
 		exit(1);
 	}
@@ -19,8 +18,7 @@ int openFileRO(char *path)
 int createFile(char *path)
 {
 	int ret ;
-	if((ret = open(path, O_CREAT|O_WRONLY|O_TRUNC, 0777)) == -1) 
-	{
+	if ((ret = open(path, O_CREAT|O_WRONLY|O_TRUNC, 0777)) == -1) {
 		perror("createFile failed");
 		exit(1);
 	}
@@ -32,18 +30,13 @@ int openFileWR(char *path, int truncate)
 {
 	int ret ;
 	
-	if(!truncate)
-	{
-		if((ret = open(path, O_WRONLY)) == -1) 
-		{
+	if (!truncate) {
+		if ((ret = open(path, O_WRONLY)) == -1) {
 			perror("openFileWR failed");
 			exit(1);
 		}
-	}
-	else
-	{
-		if((ret = open(path, O_WRONLY | O_TRUNC)) == -1) 
-		{
+	} else {
+		if ((ret = open(path, O_WRONLY | O_TRUNC)) == -1) {
 			perror("openFileWR failed");
 			exit(1);
 		}
@@ -56,8 +49,7 @@ int openFileROWR(char *path)
 {
 	int ret ;
 		
-	if((ret = open(path, O_RDWR)) == -1) 
-	{
+	if ((ret = open(path, O_RDWR)) == -1) {
 		perror("openFileROWR failed");
 		exit(1);
 	}
