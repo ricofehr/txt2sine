@@ -94,9 +94,9 @@ int open_file_rwr(char *path)
 *	Read a chunk of characters from a file (in current position)
 *	and fill buffer with this
 */
-int read_file(int desc, signed char *buffer, int sz)
+int read_file(int desc, short *buffer, int sz)
 {
-	return read(desc, buffer, sz*sizeof(unsigned char));
+	return read(desc, buffer, sz*sizeof(short));
 }
 
 /*
@@ -108,9 +108,9 @@ int read_file(int desc, signed char *buffer, int sz)
 *
 *	Write sz characters from buffer into a file (in current position)
 */
-int write_file(int desc, signed char *buffer, int sz)
+int write_file(int desc, short *buffer, int sz)
 {
-	return write(desc, buffer, sz*sizeof(unsigned char));
+	return write(desc, buffer, sz*sizeof(short));
 }
 
 /*

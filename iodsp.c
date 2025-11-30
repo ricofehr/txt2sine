@@ -87,7 +87,7 @@ void open_dsp(int channels, int speed, int format, int wr, int fragments)
 *	Read sz characters from dsp device and write
 *	them in buffer variable
 */
-int read_dsp(signed char *buffer, int sz)
+int read_dsp(short *buffer, int sz)
 {
 	int ret;
 
@@ -106,12 +106,12 @@ int read_dsp(signed char *buffer, int sz)
 *	Write sz characters from buffer variable
 *	to dsp device
 */
-int write_dsp(signed char *buffer, int sz)
+int write_dsp(short *buffer, int sz)
 {
 	int ret;
 	int test;
 
-	if ((ret = write_file(desc_dsp, buffer, sz*sizeof(signed char)) == -1)) {
+	if ((ret = write_file(desc_dsp, buffer, sz*sizeof(unsigned char)) == -1)) {
 		perror("audio write");
 		exit(1);
 	}

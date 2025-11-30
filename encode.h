@@ -1,7 +1,7 @@
 #ifndef ENCODE_H_
 #define ENCODE_H_
 
-#define NSAMPLES (22050)
+#define NSAMPLES (8192)
 
 /* Declares global variables */
 extern const int speed;
