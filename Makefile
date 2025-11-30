@@ -27,3 +27,6 @@ encode.o: encode.c encode.h iodsp.h iomixer.h
 	gcc -I/usr/local/include -c encode.c
 main_encode.o: main_encode.c encode.h iofile.h
 	gcc -c main_encode.c
+
+clean :
+	rm -f *.o bin/* 2>/dev/null
