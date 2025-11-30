@@ -6,6 +6,9 @@
 #include "encode.h"
 #include "iofile.h"
 
+static unsigned char start[] = "bhkh";
+static unsigned char end[] = "hkh";
+
 /*
 *	Open "testaudioRO" file and transmit to dsp device
 */
@@ -19,14 +22,14 @@ int main(int argc, char *argv[])
 	sleep(5);
 	init_encode();
 	/* Trigger decode to start record */
-	write_datas("bhkh");
+	write_datas(start);
 	do {
 		sz = read_file(desc, buff, sz*sizeof(unsigned char));
 		write_datas((unsigned char *)buff);
 	}
 	while (sz >= 4096);
 	/* Trigger decode to finish record */
-	write_datas("hkh");
+	write_datas(end);
 
 	close_encode();
 	close_file(desc);
